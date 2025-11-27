@@ -15,7 +15,13 @@ import android.widget.ImageView
 import androidx.core.graphics.withSave
 import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView
 import com.github.chrisbanes.photoview.PhotoView
+import androidx.lifecycle.findViewTreeLifecycleOwner
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
+import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
 import eu.kanade.tachiyomi.data.translation.TranslatedLine
+import uy.kohesive.injekt.injectLazy
 import kotlin.math.max
 import kotlin.math.min
 
@@ -24,6 +30,21 @@ class TranslationOverlayView @JvmOverloads constructor(
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
+
+    private val readerPreferences: ReaderPreferences by injectLazy()
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        val scope = findViewTreeLifecycleOwner()?.lifecycleScope ?: return
+
+        readerPreferences.translationBackgroundAlpha().changes()
+            .onEach { invalidate() }
+            .launchIn(scope)
+
+        readerPreferences.translationFontSize().changes()
+            .onEach { invalidate() }
+            .launchIn(scope)
+    }
 
     private var translatedLines: List<TranslatedLine> = emptyList()
     private var pageView: View? = null
@@ -38,6 +59,7 @@ class TranslationOverlayView @JvmOverloads constructor(
         color = Color.BLACK
         isAntiAlias = true
         textAlign = Paint.Align.LEFT
+        typeface = android.graphics.Typeface.DEFAULT_BOLD
     }
     
     fun setTranslations(lines: List<TranslatedLine>) {
@@ -54,6 +76,10 @@ class TranslationOverlayView @JvmOverloads constructor(
         super.onDraw(canvas)
         val view = pageView ?: return
         if (translatedLines.isEmpty()) return
+
+        val bgAlpha = (readerPreferences.translationBackgroundAlpha().get() * 255).toInt().coerceIn(0, 255)
+        backgroundPaint.alpha = bgAlpha
+        val fontScale = readerPreferences.translationFontSize().get()
 
         for (line in translatedLines) {
             val imageRect = line.boundingBox
@@ -103,32 +129,29 @@ class TranslationOverlayView @JvmOverloads constructor(
             canvas.drawRect(viewRect, backgroundPaint)
             
             // Text fitting with StaticLayout
-            drawMultilineText(canvas, line.translatedText, viewRect)
+            drawMultilineText(canvas, line.translatedText, viewRect, fontScale)
         }
     }
     
-    private fun drawMultilineText(canvas: Canvas, text: String, rect: RectF) {
+    private fun drawMultilineText(canvas: Canvas, text: String, rect: RectF, fontScale: Float) {
         val width = rect.width().toInt()
         if (width <= 0) return
 
-        // Dynamic text size calculation
-        var textSize = 50f
-        textPaint.textSize = textSize
-        
-        // Simple heuristic: try to fit text area into rect area
-        // Area = width * height. Text Area approx = char_count * char_area
-        // This is rough. Better to just measure.
-        
-        // Binary search or iterative reduction for font size
-        // We want the text to fit within rect.height() when wrapped at rect.width()
+        // 1. Find the optimal size that fits the box (without scale)
+        var textSize = 100f // Start big
+        val minSize = 10f
         
         var layout: StaticLayout
-        while (textSize > 10f) {
+        
+        // Iterative reduction to find "fit" size
+        while (textSize > minSize) {
             textPaint.textSize = textSize
             layout = StaticLayout.Builder.obtain(text, 0, text.length, textPaint, width)
                 .setAlignment(Layout.Alignment.ALIGN_CENTER)
                 .setLineSpacing(0f, 1.0f)
                 .setIncludePad(false)
+                .setEllipsize(null)
+                .setMaxLines(Integer.MAX_VALUE)
                 .build()
             
             if (layout.height <= rect.height()) {
@@ -137,16 +160,38 @@ class TranslationOverlayView @JvmOverloads constructor(
             textSize -= 2f
         }
         
-        // Final layout
+        // 2. Apply user preference scale to the "fitting" size
+        // If fontScale is 1.0, it stays as "fitting size".
+        // If 2.0, it doubles (and overflows).
+        // If 0.5, it shrinks.
+        textSize *= fontScale
+        
+        // Ensure we don't go below readable size
+        textSize = max(textSize, minSize)
+
+        // 3. Final Layout
         textPaint.textSize = textSize
         layout = StaticLayout.Builder.obtain(text, 0, text.length, textPaint, width)
             .setAlignment(Layout.Alignment.ALIGN_CENTER)
             .setLineSpacing(0f, 1.0f)
             .setIncludePad(false)
+            .setEllipsize(null)
+            .setMaxLines(Integer.MAX_VALUE)
             .build()
 
         canvas.withSave {
-            translate(rect.left, rect.top + (rect.height() - layout.height) / 2)
+            // Center vertically if it fits, otherwise align top
+            val yOffset = if (layout.height < rect.height()) {
+                (rect.height() - layout.height) / 2
+            } else {
+                0f
+            }
+            translate(rect.left, rect.top + yOffset)
+            
+            // Clip to rect if it overflows? 
+            // User might want to see the text even if it overflows the original bubble.
+            // Let's NOT clip for now, as bubbles are often smaller than the text we want to read.
+            
             layout.draw(canvas)
         }
     }

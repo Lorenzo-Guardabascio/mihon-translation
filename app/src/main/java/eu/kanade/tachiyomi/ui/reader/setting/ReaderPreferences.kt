@@ -143,7 +143,13 @@ class ReaderPreferences(
 
     fun translationEnabled() = preferenceStore.getBoolean("pref_reader_translation_enabled", false)
 
+    fun translationSourceLanguage() = preferenceStore.getString("pref_reader_translation_source_lang", "en")
+
     fun translationTargetLanguage() = preferenceStore.getString("pref_reader_translation_target_lang", "it")
+
+    fun translationBackgroundAlpha() = preferenceStore.getFloat("pref_reader_translation_bg_alpha", 0.8f)
+
+    fun translationFontSize() = preferenceStore.getFloat("pref_reader_translation_font_size", 1.0f)
 
     // endregion
 

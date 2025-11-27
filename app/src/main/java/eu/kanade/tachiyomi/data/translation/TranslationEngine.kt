@@ -210,4 +210,11 @@ class TranslationEngine {
         translator?.close()
         initializeTranslator()
     }
+
+    fun setSourceLanguage(lang: String) {
+        if (sourceLang == lang) return
+        sourceLang = lang
+        translator?.close()
+        initializeTranslator()
+    }
 }

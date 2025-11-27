@@ -1,13 +1,14 @@
 <div align="center">
 
 <a href="https://mihon.app">
-    <img src="./.github/assets/logo.png" alt="Mihon logo" title="Mihon logo" width="80"/>
+    <img src="./.github/assets/logo.png" alt="Mihon-AT logo" title="Mihon-AT logo" width="80"/>
 </a>
 
-# Mihon [App](#)
+# Mihon-AT [App](#)
 
-### Full-featured reader
+### Full-featured reader with Auto-Translation
 Discover and read manga, webtoons, comics, and more – easier than ever on your Android device.
+Now with integrated ML Kit translation support!
 
 [![Discord server](https://img.shields.io/discord/1195734228319617024.svg?label=&labelColor=6A7EC2&color=7389D8&logo=discord&logoColor=FFFFFF)](https://discord.gg/mihon)
 [![GitHub downloads](https://img.shields.io/github/downloads/mihonapp/mihon/total?label=downloads&labelColor=27303D&color=0D1117&logo=github&logoColor=FFFFFF&style=flat)](https://mihon.app/download)
@@ -27,6 +28,7 @@ Discover and read manga, webtoons, comics, and more – easier than ever on your
 
 <div align="left">
 
+* **Real-time Image Translation:** Translate manga pages instantly using on-device ML Kit.
 * Local reading of content.
 * A configurable reader with multiple viewers, reading directions and other settings.
 * Tracker support: [MyAnimeList](https://myanimelist.net/), [AniList](https://anilist.co/), [Kitsu](https://kitsu.app/), [MangaUpdates](https://mangaupdates.com), [Shikimori](https://shikimori.one), and [Bangumi](https://bgm.tv/) support.

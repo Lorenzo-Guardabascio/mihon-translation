@@ -111,13 +111,15 @@ class PagerPageHolder(
             }
 
             launch {
-                viewer.activity.viewModel.translationUpdates.collectLatest { update ->
-                    if (update != null && update.first == page) {
-                        if (viewer.activity.viewModel.isTranslationEnabled.value) {
-                            withUIContext { setTranslations(update.second) }
+                viewer.activity.viewModel.translationUpdates
+                    .collect { update ->
+                        val (page, lines) = update
+                        if (page == this@PagerPageHolder.page) {
+                            if (viewer.activity.viewModel.isTranslationEnabled.value) {
+                                withUIContext { setTranslations(lines) }
+                            }
                         }
                     }
-                }
             }
 
             page.statusFlow.collectLatest { state ->

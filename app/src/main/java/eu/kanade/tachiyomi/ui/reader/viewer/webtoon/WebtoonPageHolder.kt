@@ -151,13 +151,15 @@ class WebtoonPageHolder(
             }
 
             launch {
-                viewer.activity.viewModel.translationUpdates.collectLatest { update ->
-                    if (update != null && update.first == page) {
-                        if (viewer.activity.viewModel.isTranslationEnabled.value) {
-                            withUIContext { frame.setTranslations(update.second) }
+                viewer.activity.viewModel.translationUpdates
+                    .collect { update ->
+                        val (page, lines) = update
+                        if (page == this@WebtoonPageHolder.page) {
+                            if (viewer.activity.viewModel.isTranslationEnabled.value) {
+                                withUIContext { frame.setTranslations(lines) }
+                            }
                         }
                     }
-                }
             }
 
             page.statusFlow.collectLatest { state ->

@@ -48,6 +48,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
@@ -237,9 +238,12 @@ class ReaderViewModel @JvmOverloads constructor(
     private val _isTranslationEnabled = MutableStateFlow(readerPreferences.translationEnabled().get())
     val isTranslationEnabled = _isTranslationEnabled.asStateFlow()
 
-    private val translationCache = mutableMapOf<ReaderPage, List<TranslatedLine>>()
-    private val _translationUpdates = MutableStateFlow<Pair<ReaderPage, List<TranslatedLine>>?>(null)
-    val translationUpdates = _translationUpdates.asStateFlow()
+    private val translationCache = mutableMapOf<Pair<Long, Int>, List<TranslatedLine>>()
+    private val _translationUpdates = kotlinx.coroutines.flow.MutableSharedFlow<Pair<ReaderPage, List<TranslatedLine>>>(
+        replay = 10,
+        onBufferOverflow = kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST
+    )
+    val translationUpdates = _translationUpdates.asSharedFlow()
 
     init {
         // To save state
@@ -258,7 +262,17 @@ class ReaderViewModel @JvmOverloads constructor(
             .launchIn(viewModelScope)
 
         readerPreferences.translationTargetLanguage().changes()
-            .onEach { translationEngine.setTargetLanguage(it) }
+            .onEach { 
+                translationEngine.setTargetLanguage(it)
+                translationCache.clear()
+            }
+            .launchIn(viewModelScope)
+
+        readerPreferences.translationSourceLanguage().changes()
+            .onEach { 
+                translationEngine.setSourceLanguage(it)
+                translationCache.clear()
+            }
             .launchIn(viewModelScope)
     }
 
@@ -971,8 +985,11 @@ class ReaderViewModel @JvmOverloads constructor(
      * Translate the given [page] and cache the result.
      */
     fun translatePage(page: ReaderPage) {
-        if (translationCache.containsKey(page)) {
-            _translationUpdates.value = page to translationCache[page]!!
+        val chapterId = page.chapter.chapter.id ?: return
+        val key = chapterId to page.index
+        
+        if (translationCache.containsKey(key)) {
+            _translationUpdates.tryEmit(page to translationCache[key]!!)
             return
         }
 
@@ -993,8 +1010,8 @@ class ReaderViewModel @JvmOverloads constructor(
                         val cropBorders = if (isPager) readerPreferences.cropBorders().get() else readerPreferences.cropBordersWebtoon().get()
                         
                         val lines = translationEngine.translate(bitmap, cropBorders)
-                        translationCache[page] = lines
-                        _translationUpdates.value = page to lines
+                        translationCache[key] = lines
+                        _translationUpdates.emit(page to lines)
                     } finally {
                         bitmap.recycle()
                     }
@@ -1009,7 +1026,9 @@ class ReaderViewModel @JvmOverloads constructor(
      * Retries the translation for the given [page].
      */
     fun retryPageTranslation(page: ReaderPage) {
-        translationCache.remove(page)
+        val chapterId = page.chapter.chapter.id ?: return
+        val key = chapterId to page.index
+        translationCache.remove(key)
         translatePage(page)
     }
 
