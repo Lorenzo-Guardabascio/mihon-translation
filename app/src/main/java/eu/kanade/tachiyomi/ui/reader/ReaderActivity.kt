@@ -455,6 +455,7 @@ class ReaderActivity : BaseActivity() {
         val cropBorderWebtoon by readerPreferences.cropBordersWebtoon().collectAsState()
         val isPagerType = ReadingMode.isPagerType(viewModel.getMangaReadingMode())
         val cropEnabled = if (isPagerType) cropBorderPaged else cropBorderWebtoon
+        val translationEnabled by viewModel.isTranslationEnabled.collectAsState()
 
         ReaderAppBars(
             visible = state.menuVisible,
@@ -494,6 +495,15 @@ class ReaderActivity : BaseActivity() {
                 val enabled = viewModel.toggleCropBorders()
                 menuToggleToast?.cancel()
                 menuToggleToast = toast(if (enabled) MR.strings.on else MR.strings.off)
+            },
+            translationEnabled = translationEnabled,
+            onClickTranslation = viewModel::toggleTranslation,
+            onLongClickTranslation = {
+                val page = state.currentChapter?.pages?.getOrNull(state.currentPage)
+                if (page != null) {
+                    viewModel.retryPageTranslation(page)
+                    toast("Retrying translation...")
+                }
             },
             onClickSettings = viewModel::openSettingsDialog,
         )

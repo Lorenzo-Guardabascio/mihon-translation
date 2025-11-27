@@ -1,6 +1,10 @@
 package eu.kanade.tachiyomi.ui.reader
 
 import android.app.Application
+import android.graphics.BitmapFactory
+import eu.kanade.tachiyomi.data.translation.TranslationEngine
+import eu.kanade.tachiyomi.data.translation.TranslatedLine
+import okio.BufferedSource
 import android.net.Uri
 import androidx.annotation.IntRange
 import androidx.compose.runtime.Immutable
@@ -228,6 +232,15 @@ class ReaderViewModel @JvmOverloads constructor(
     private val incognitoMode: Boolean by lazy { getIncognitoState.await(manga?.source) }
     private val downloadAheadAmount = downloadPreferences.autoDownloadWhileReading().get()
 
+    // Translation
+    private val translationEngine by lazy { TranslationEngine() }
+    private val _isTranslationEnabled = MutableStateFlow(readerPreferences.translationEnabled().get())
+    val isTranslationEnabled = _isTranslationEnabled.asStateFlow()
+
+    private val translationCache = mutableMapOf<ReaderPage, List<TranslatedLine>>()
+    private val _translationUpdates = MutableStateFlow<Pair<ReaderPage, List<TranslatedLine>>?>(null)
+    val translationUpdates = _translationUpdates.asStateFlow()
+
     init {
         // To save state
         state.map { it.viewerChapters?.currChapter }
@@ -242,6 +255,10 @@ class ReaderViewModel @JvmOverloads constructor(
                 }
                 chapterId = currentChapter.chapter.id!!
             }
+            .launchIn(viewModelScope)
+
+        readerPreferences.translationTargetLanguage().changes()
+            .onEach { translationEngine.setTargetLanguage(it) }
             .launchIn(viewModelScope)
     }
 
@@ -947,6 +964,74 @@ class ReaderViewModel @JvmOverloads constructor(
     private fun deletePendingChapters() {
         viewModelScope.launchNonCancellable {
             downloadManager.deletePendingChapters()
+        }
+    }
+
+    /**
+     * Translate the given [page] and cache the result.
+     */
+    fun translatePage(page: ReaderPage) {
+        if (translationCache.containsKey(page)) {
+            _translationUpdates.value = page to translationCache[page]!!
+            return
+        }
+
+        viewModelScope.launchIO {
+            try {
+                val streamFn = page.stream ?: return@launchIO
+                val stream = streamFn()
+                val bitmap = try {
+                    BitmapFactory.decodeStream(stream)
+                } finally {
+                    stream.close()
+                }
+
+                if (bitmap != null) {
+                    try {
+                        val viewer = state.value.viewer
+                        val isPager = viewer is eu.kanade.tachiyomi.ui.reader.viewer.pager.PagerViewer
+                        val cropBorders = if (isPager) readerPreferences.cropBorders().get() else readerPreferences.cropBordersWebtoon().get()
+                        
+                        val lines = translationEngine.translate(bitmap, cropBorders)
+                        translationCache[page] = lines
+                        _translationUpdates.value = page to lines
+                    } finally {
+                        bitmap.recycle()
+                    }
+                }
+            } catch (e: Exception) {
+                logcat(LogPriority.ERROR, e) { "Error translating page ${page.number}" }
+            }
+        }
+    }
+
+    /**
+     * Retries the translation for the given [page].
+     */
+    fun retryPageTranslation(page: ReaderPage) {
+        translationCache.remove(page)
+        translatePage(page)
+    }
+
+    /**
+     * Toggles the translation state and updates the preference.
+     */
+    fun toggleTranslation() {
+        val newState = !_isTranslationEnabled.value
+        _isTranslationEnabled.value = newState
+        readerPreferences.translationEnabled().set(newState)
+
+        if (newState) {
+            val current = state.value.viewerChapters?.currChapter?.pages?.getOrNull(state.value.currentPage)
+            if (current != null) {
+                translatePage(current)
+                // Preload next 2
+                val pages = state.value.viewerChapters?.currChapter?.pages ?: return
+                val currentIndex = current.index
+                for (i in 1..2) {
+                    pages.getOrNull(currentIndex + i)?.let { translatePage(it) }
+                }
+            }
         }
     }
 

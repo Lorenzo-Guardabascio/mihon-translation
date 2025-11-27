@@ -12,6 +12,8 @@ ktlint-core = "1.8.0"
 firebase-bom = "34.6.0"
 markdown = "0.38.1"
 junit = "6.0.1"
+mlkit-text-recognition = "16.0.1"
+mlkit-translate = "17.0.3"
 
 [libraries]
 desugar = "com.android.tools:desugar_jdk_libs:2.1.5"
@@ -48,6 +50,9 @@ coil-core = { module = "io.coil-kt.coil3:coil" }
 coil-gif = { module = "io.coil-kt.coil3:coil-gif" }
 coil-compose = { module = "io.coil-kt.coil3:coil-compose" }
 coil-network-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp" }
+
+mlkit-text-recognition = { module = "com.google.mlkit:text-recognition", version.ref = "mlkit-text-recognition" }
+mlkit-translate = { module = "com.google.mlkit:translate", version.ref = "mlkit-translate" }
 
 subsamplingscaleimageview = "com.github.tachiyomiorg:subsampling-scale-image-view:66e0db195d"
 image-decoder = "com.github.tachiyomiorg:image-decoder:41c059e540"
@@ -105,6 +110,8 @@ markdown-core = { module = "com.mikepenz:multiplatform-markdown-renderer", versi
 markdown-coil = { module = "com.mikepenz:multiplatform-markdown-renderer-coil3", version.ref = "markdown" }
 
 stringSimilarity = { module = "com.aallam.similarity:string-similarity-kotlin", version = "0.1.0" }
+
+kotlinx-coroutines-play-services = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-play-services", version = "1.7.3" }
 
 [plugins]
 google-services = { id = "com.google.gms.google-services", version = "4.4.4" }

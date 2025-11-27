@@ -137,6 +137,29 @@ class WebtoonPageHolder(
             launchIO {
                 loader.loadPage(page)
             }
+
+            launch {
+                viewer.activity.viewModel.isTranslationEnabled.collectLatest { enabled ->
+                    if (enabled) {
+                        if (page.status == Page.State.Ready) {
+                            viewer.activity.viewModel.translatePage(page)
+                        }
+                    } else {
+                        withUIContext { frame.setTranslations(null) }
+                    }
+                }
+            }
+
+            launch {
+                viewer.activity.viewModel.translationUpdates.collectLatest { update ->
+                    if (update != null && update.first == page) {
+                        if (viewer.activity.viewModel.isTranslationEnabled.value) {
+                            withUIContext { frame.setTranslations(update.second) }
+                        }
+                    }
+                }
+            }
+
             page.statusFlow.collectLatest { state ->
                 when (state) {
                     Page.State.Queue -> setQueued()
@@ -206,6 +229,10 @@ class WebtoonPageHolder(
                     ),
                 )
                 removeErrorLayout()
+
+                if (viewer.activity.viewModel.isTranslationEnabled.value) {
+                    viewer.activity.viewModel.translatePage(page!!)
+                }
             }
         } catch (e: Throwable) {
             logcat(LogPriority.ERROR, e)

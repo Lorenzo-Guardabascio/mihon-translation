@@ -205,6 +205,7 @@ dependencies {
 
     implementation(platform(kotlinx.coroutines.bom))
     implementation(kotlinx.bundles.coroutines)
+    implementation(kotlinx.coroutines.play.services)
 
     // AndroidX libraries
     implementation(androidx.annotation)
@@ -253,6 +254,10 @@ dependencies {
         exclude(module = "image-decoder")
     }
     implementation(libs.image.decoder)
+
+    // ML Kit
+    implementation(libs.mlkit.text.recognition)
+    implementation(libs.mlkit.translate)
 
     // UI libraries
     implementation(libs.material)

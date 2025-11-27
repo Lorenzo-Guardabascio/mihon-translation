@@ -139,6 +139,14 @@ class ReaderPreferences(
 
     // endregion
 
+    // region Translation
+
+    fun translationEnabled() = preferenceStore.getBoolean("pref_reader_translation_enabled", false)
+
+    fun translationTargetLanguage() = preferenceStore.getString("pref_reader_translation_target_lang", "it")
+
+    // endregion
+
     enum class FlashColor {
         BLACK,
         WHITE,

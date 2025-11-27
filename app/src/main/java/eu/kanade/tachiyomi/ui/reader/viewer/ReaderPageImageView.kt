@@ -78,6 +78,13 @@ open class ReaderPageImageView @JvmOverloads constructor(
      */
     var pageBackground: Drawable? = null
 
+    private var translationOverlay: TranslationOverlayView? = null
+
+    init {
+        translationOverlay = TranslationOverlayView(context)
+        addView(translationOverlay, LayoutParams(MATCH_PARENT, MATCH_PARENT))
+    }
+
     @CallSuper
     open fun onImageLoaded() {
         onImageLoaded?.invoke()
@@ -232,7 +239,10 @@ open class ReaderPageImageView @JvmOverloads constructor(
     }
 
     private fun prepareNonAnimatedImageView() {
-        if (pageView is SubsamplingScaleImageView) return
+        if (pageView is SubsamplingScaleImageView) {
+            translationOverlay?.bringToFront()
+            return
+        }
         removeView(pageView)
 
         pageView = if (isWebtoon) {
@@ -248,16 +258,19 @@ open class ReaderPageImageView @JvmOverloads constructor(
                 object : SubsamplingScaleImageView.OnStateChangedListener {
                     override fun onScaleChanged(newScale: Float, origin: Int) {
                         this@ReaderPageImageView.onScaleChanged(newScale)
+                        translationOverlay?.invalidate()
                     }
 
                     override fun onCenterChanged(newCenter: PointF?, origin: Int) {
-                        // Not used
+                        translationOverlay?.invalidate()
                     }
                 },
             )
             setOnClickListener { this@ReaderPageImageView.onViewClicked() }
         }
         addView(pageView, MATCH_PARENT, MATCH_PARENT)
+        translationOverlay?.bringToFront()
+        translationOverlay?.attachToPageView(pageView!!)
     }
 
     private fun SubsamplingScaleImageView.setupZoom(config: Config?) {
@@ -339,7 +352,10 @@ open class ReaderPageImageView @JvmOverloads constructor(
     }
 
     private fun prepareAnimatedImageView() {
-        if (pageView is AppCompatImageView) return
+        if (pageView is AppCompatImageView) {
+            translationOverlay?.bringToFront()
+            return
+        }
         removeView(pageView)
 
         pageView = if (isWebtoon) {
@@ -371,10 +387,16 @@ open class ReaderPageImageView @JvmOverloads constructor(
                 )
                 setOnScaleChangeListener { _, _, _ ->
                     this@ReaderPageImageView.onScaleChanged(scale)
+                    translationOverlay?.invalidate()
+                }
+                setOnMatrixChangeListener { _ ->
+                    translationOverlay?.invalidate()
                 }
             }
         }
         addView(pageView, MATCH_PARENT, MATCH_PARENT)
+        translationOverlay?.bringToFront()
+        translationOverlay?.attachToPageView(pageView!!)
     }
 
     private fun setAnimatedImage(
@@ -427,6 +449,12 @@ open class ReaderPageImageView @JvmOverloads constructor(
         LEFT,
         CENTER,
         RIGHT,
+    }
+
+    fun setTranslations(lines: List<eu.kanade.tachiyomi.data.translation.TranslatedLine>?) {
+        translationOverlay?.setTranslations(lines ?: emptyList())
+        pageView?.let { translationOverlay?.attachToPageView(it) }
+        translationOverlay?.bringToFront()
     }
 }
 
