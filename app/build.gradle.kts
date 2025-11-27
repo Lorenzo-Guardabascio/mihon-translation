@@ -26,8 +26,8 @@ android {
     defaultConfig {
         applicationId = "app.mihon"
 
-        versionCode = 13
-        versionName = "0.19.1"
+        versionCode = 16
+        versionName = "0.19.3"
 
         buildConfigField("String", "COMMIT_COUNT", "\"${getCommitCount()}\"")
         buildConfigField("String", "COMMIT_SHA", "\"${getGitSha()}\"")
@@ -138,9 +138,9 @@ android {
     buildFeatures {
         viewBinding = true
         buildConfig = true
+        aidl = true
 
         // Disable some unused things
-        aidl = false
         renderScript = false
         shaders = false
     }
@@ -261,7 +261,6 @@ dependencies {
     implementation(libs.directionalviewpager) {
         exclude(group = "androidx.viewpager", module = "viewpager")
     }
-    implementation(libs.insetter)
     implementation(libs.richeditor.compose)
     implementation(libs.aboutLibraries.compose)
     implementation(libs.bundles.voyager)
